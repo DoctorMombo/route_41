@@ -81,8 +81,6 @@ signal weather_event_ended(event: WeatherEvent)
 @export var cover_ray_length: float = 8.0
 ## Wind still finds you under an overhang, just less of it.
 @export_range(0.0, 1.0) var sheltered_wind_fraction: float = 0.35
-## Windows let light in. A driver is out of the wind but not out of the sun.
-@export_range(0.0, 1.0) var vehicle_sun_fraction: float = 0.25
 ## Seconds for an exposure change to land, so walking past a rock does not
 ## make felt temperature flicker.
 @export var exposure_slew_seconds: float = 0.5
@@ -102,6 +100,14 @@ var flash_direction: Vector3 = Vector3.UP
 var sun_exposure: float = 1.0
 ## 0..1, smoothed. 1 = standing out in the open wind.
 var wind_exposure: float = 1.0
+
+## The enclosed space the player is inside of right now, or null outdoors.
+##
+## An overhang is not a shelter: standing under a ledge cuts the sun and some of
+## the wind, but the air is still the biome's. A shelter is something with air of
+## its OWN, which is why it is a node rather than a flag -- it is the thing that
+## answers what that air is doing. See the get_shelter_* contract in car.gd.
+var shelter: Node = null
 
 var _states: Dictionary = {}
 var _cirrus_offset := Vector2.ZERO
@@ -298,6 +304,41 @@ func get_effective_light_level() -> float:
 	return day_night.get_light_level() * get_light_transmission()
 
 
+# --- what the player is actually standing in --------------------------------
+#
+# Survival reads THESE, not the biome state. Indoors they are the shelter's own
+# air; outdoors they fall straight through to the biome, so nothing downstream
+# has to know which case it is in.
+
+func is_indoors() -> bool:
+	return shelter != null
+
+
+## Something short for the HUD -- "car cabin". Empty when outdoors.
+func get_shelter_name() -> String:
+	return String(shelter.call(&"get_shelter_name")) if shelter != null else ""
+
+
+func get_ambient_temperature_c() -> float:
+	var c := _shelter_climate()
+	return c.temperature_c if c != null else get_state().temperature_c
+
+
+func get_ambient_humidity() -> float:
+	var c := _shelter_climate()
+	return c.humidity if c != null else get_state().humidity
+
+
+## What the air feels like, which is not the same as what it measures.
+##
+## Outdoors that gap is the sun on your back and the wind taking it away.
+## Indoors there is no gap: no sun reaches you and no wind moves, so the cabin's
+## air temperature IS the felt temperature.
+func get_felt_temperature_c() -> float:
+	var c := _shelter_climate()
+	return c.temperature_c if c != null else get_state().felt_temperature_c
+
+
 ## Force cloud coverage instead of the simulation, for the console's 'clouds'
 ## command. Pass -1 for a layer to leave it natural.
 func debug_set_cloud_coverage(cirrus: float, deck: float) -> void:
@@ -335,6 +376,26 @@ func _step_states(dt_hours: float) -> void:
 			state.step(dt_hours, days, alt)
 
 
+## The shelter the player is inside of, or null. call() rather than a direct
+## call because _player is typed Node3D here and a call to a method the base
+## class does not declare will not compile, however sure we are it is there.
+func _current_shelter() -> Node:
+	if _player == null or not _player.has_method(&"get_shelter"):
+		return null
+	var s := _player.call(&"get_shelter") as Node
+	# A shelter that cannot answer for itself is not one. Guarding here means
+	# every reader below can assume the whole contract is present.
+	if s == null or not s.has_method(&"get_shelter_climate"):
+		return null
+	return s
+
+
+func _shelter_climate() -> CabinClimate:
+	if shelter == null:
+		return null
+	return shelter.call(&"get_shelter_climate") as CabinClimate
+
+
 ## Two raycasts, a few times a second, from wherever the player's eyes are.
 ## Using the active camera rather than the player node means this keeps working
 ## while they are driving, when the player node itself is dormant.
@@ -350,15 +411,13 @@ func _update_exposure(delta: float) -> void:
 
 
 func _sample_exposure() -> void:
-	# In a vehicle: out of the wind entirely, but the sun still comes through
-	# the glass. No raycast needed, and none would give the right answer -- the
-	# camera sits inside the car's own collision shape.
-	# call() rather than _player.is_driving(): _player is typed Node3D here, and
-	# a direct call to a method the base class does not declare will not
-	# compile, however sure we are that the player script has it.
-	if _player and _player.has_method(&"is_driving") and bool(_player.call(&"is_driving")):
-		_sun_exposure_target = vehicle_sun_fraction
-		_wind_exposure_target = 0.0
+	# Indoors, the shelter answers for itself. No raycast would give the right
+	# answer anyway -- the camera sits inside the car's own collision shape --
+	# and a shelter knows how much it keeps off in a way no cast could work out.
+	shelter = _current_shelter()
+	if shelter != null:
+		_sun_exposure_target = float(shelter.call(&"get_shelter_sun_exposure"))
+		_wind_exposure_target = float(shelter.call(&"get_shelter_wind_exposure"))
 		return
 
 	var cam := get_viewport().get_camera_3d()

@@ -88,6 +88,7 @@ func _register_commands() -> void:
 	_commands["timescale"] = _cmd_timescale
 	_commands["daylength"] = _cmd_daylength
 	_commands["pause"] = _cmd_pause
+	_commands["car"] = _cmd_car
 
 
 func _cmd_help(_args: Array) -> void:
@@ -110,6 +111,12 @@ func _cmd_help(_args: Array) -> void:
 	_log("  timescale [x]         multiplier on the passage of time")
 	_log("  daylength [seconds]   real seconds per in-game day")
 	_log("  pause                 freeze or unfreeze the clock")
+	_log("")
+	_log("[color=aqua]Car[/color]")
+	_log("  car                   speed, surface, brake and cabin readout")
+	_log("  car brake             toggle the parking brake")
+	_log("  car here              bring the car to the player, parked")
+	_log("  car flip              set it back on its wheels where it is")
 
 
 func _cmd_clear(_args: Array) -> void:
@@ -200,13 +207,61 @@ func _report_weather() -> void:
 	_log("  cloud cover  %.1f %%   (cirrus %.0f%%, deck %.0f%%)"
 		% [s.cloud_cover * 100.0, s.cirrus_cover * 100.0, s.deck_cover * 100.0])
 	_log("  dust haze    %.1f %%" % [s.dust_haze * 100.0])
-	_log("  exposure     sun %.2f, wind %.2f"
-		% [weather.sun_exposure, weather.wind_exposure])
+	_log("  exposure     sun %.2f, wind %.2f  (%s)"
+		% [weather.sun_exposure, weather.wind_exposure,
+			weather.get_shelter_name() if weather.is_indoors() else "outdoors"])
+	if weather.is_indoors():
+		_log("  you feel     %.1f C, %.1f %% humidity"
+			% [weather.get_ambient_temperature_c(), weather.get_ambient_humidity() * 100.0])
 	if s.event != null:
 		_log("  event        %s, %s (blend %.2f)"
 			% [s.event.display_name, s.phase_name(), s.event_blend])
 	else:
 		_log("  next event   in %.1f in-game hours" % s.hours_to_event)
+
+
+# --- car --------------------------------------------------------------------
+
+func _cmd_car(args: Array) -> void:
+	var car := get_tree().get_first_node_in_group("vehicle") as Car
+	if car == null:
+		_log("[color=orange]No car in group 'vehicle'.[/color]")
+		return
+
+	var token := String(args[0]).to_lower() if not args.is_empty() else ""
+	match token:
+		"":
+			_report_car(car)
+		"brake", "handbrake", "park":
+			car.set_parking_brake(not car.parking_brake_engaged)
+			_log("Parking brake %s." % ("ON" if car.parking_brake_engaged else "OFF"))
+		"here", "come":
+			if player == null:
+				_log("[color=orange]No player found.[/color]")
+				return
+			# Two metres to the player's left, facing the way they are facing --
+			# beside them rather than on top of them.
+			var spot := player.global_position - player.global_transform.basis.x * 2.5
+			car.place_at(spot + Vector3.UP * 0.3, player.rotation.y)
+			_log("Car brought to %v, parked." % car.global_position)
+		"flip", "right":
+			car.place_at(car.global_position + Vector3.UP * 0.8, car.rotation.y)
+			_log("Car set back on its wheels.")
+		_:
+			_log("[color=orange]Unknown: car %s[/color]  (try: brake, here, flip)" % token)
+
+
+func _report_car(car: Car) -> void:
+	var surface := car.get_drive_surface()
+	var footing := "tarmac" if surface >= 0.99 else ("sand" if surface <= 0.01 else "straddling the edge")
+	_log("[color=aqua]Car[/color] — %.0f km/h on %s" % [car.get_speed_kmh(), footing])
+	_log("  parking brake  %s" % ("ON, holding" if car.is_parked()
+		else ("ON, still settling" if car.parking_brake_engaged else "OFF")))
+	_log("  occupied       %s" % ("yes" if car.is_occupied() else "no"))
+	_log("  wheel slip     %.2f" % car.get_wheel_slip())
+	var cabin := car.get_shelter_climate()
+	_log("  cabin air      %.1f C, %.1f %% humidity"
+		% [cabin.temperature_c, cabin.humidity * 100.0])
 
 
 # --- time -------------------------------------------------------------------
