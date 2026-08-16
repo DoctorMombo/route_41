@@ -49,6 +49,15 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	# _player's own physics processing is frozen while driving or while the
+	# debug console is open (see Player.set_driving / DebugConsole._toggle),
+	# but that doesn't touch this node -- without this check, velocity and
+	# is_on_floor() stay frozen at their last live values and we'd keep
+	# stepping to a walk that stopped.
+	if not _player.is_physics_processing():
+		_step_timer = 0.0
+		return
+
 	var grounded := _player.is_on_floor()
 	var speed := Vector2(_player.velocity.x, _player.velocity.z).length()
 	var running := speed > run_speed_threshold
