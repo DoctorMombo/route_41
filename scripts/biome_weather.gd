@@ -3,9 +3,9 @@ extends Resource
 
 ## The weather envelope for one biome, expressed as sliders.
 ##
-## Four dials drive everything: temperature, wind speed, wind direction and
-## humidity. A new biome is a new resource -- the simulation never needs to
-## know which one it is running.
+## Temperature, wind speed, wind direction and humidity drive survival; cloud
+## cover rides alongside them as its own pair of dials. A new biome is a new
+## resource -- the simulation never needs to know which one it is running.
 
 @export var biome_name: String = "Desert"
 
@@ -48,3 +48,15 @@ extends Resource
 @export_range(0.0, 0.05) var humidity_max: float = 0.05
 ## In-game days per cycle of humidity wandering between the two.
 @export var humidity_period_days: float = 3.0
+
+@export_group("Clouds")
+## Fraction of sky the high, thin deck reaches at its thickest. The desert
+## rarely sees more than a tenth of the sky occupied.
+@export_range(0.0, 1.0) var cloud_high_max: float = 0.10
+## Fraction of sky the lower, puffier deck reaches at its thickest.
+@export_range(0.0, 1.0) var cloud_low_max: float = 0.06
+## In-game days per cycle of cloud cover building up and clearing again.
+@export var cloud_period_days: float = 0.6
+## How much a sky full of cloud dims the direct sun and moon light reaching
+## the ground -- the gameplay-visible half of "clouds block the sun".
+@export_range(0.0, 1.0) var cloud_shadow_strength: float = 0.35

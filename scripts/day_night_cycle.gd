@@ -61,6 +61,10 @@ signal day_started(day_index: int)
 ## bases keep catching light after the sun has set, which is the whole reason a
 ## twilight sky reads as dramatic rather than merely dark.
 @export var cloud_sun_energy: float = 1.15
+## How brightly the moon lights the cloud layer. Small: this should read as a
+## faint blue-grey glow on the undersides of cloud near a bright moon, not a
+## second sun.
+@export var cloud_moon_energy: float = 0.5
 
 @export_group("Stars")
 @export var star_brightness: float = 1.0
@@ -301,6 +305,13 @@ func _update_sky(daylight: float, moon_up_amount: float) -> void:
 		_sky_material.set_shader_parameter("cloud_sun_color", sun.light_color)
 	_sky_material.set_shader_parameter("cloud_sun_energy",
 		cloud_sun_energy * smoothstep(-0.20, 0.10, sun_direction.y))
+
+	# Same idea for the moon: bright and high in the sky lights the cloud
+	# bases; new moon or below the horizon leaves them dark.
+	if moon:
+		_sky_material.set_shader_parameter("cloud_moon_color", moon.light_color)
+	_sky_material.set_shader_parameter("cloud_moon_energy",
+		cloud_moon_energy * moon_illumination * moon_up_amount)
 
 	var moon_wash := moon_illumination * moon_up_amount
 	_sky_material.set_shader_parameter("star_energy",

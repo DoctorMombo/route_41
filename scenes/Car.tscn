@@ -1,0 +1,154 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scenes/car.gd" id="1_car"]
+[ext_resource type="Script" path="res://scenes/driver_seat.gd" id="2_seat"]
+[ext_resource type="PackedScene" path="res://assets/vehicles/doge/Wheel.glb" id="3_wheel"]
+[ext_resource type="PackedScene" path="res://assets/vehicles/doge/doge-body.glb" id="4_body"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(2.070285, 1.05, 2.190216)
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_nose"]
+radius = 0.3057537
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cabin"]
+size = Vector3(0.5692197, 1.79466, 1.6092825)
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_trunk"]
+radius = 0.38170545
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_seat"]
+size = Vector3(0.945, 1.365, 1.155)
+
+[node name="Car" type="VehicleBody3D"]
+mass = 2200.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, -0.105, 0)
+script = ExtResource("1_car")
+
+[node name="wheel_fl" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.04729205, 0.3573549, -1.575063)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.5
+wheel_radius = 0.3885
+wheel_rest_length = 0.09975
+suspension_travel = 0.37485
+wheel_friction_slip = 5.0
+suspension_stiffness = 22.0
+suspension_max_force = 16000.0
+damping_compression = 0.6
+damping_relaxation = 0.9
+
+[node name="Wheel" parent="wheel_fl" instance=ExtResource("3_wheel")]
+transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, -0.1497888, 0, 0)
+
+[node name="wheel_fr" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.078014, 0.3573549, -1.575063)
+use_as_traction = true
+use_as_steering = true
+wheel_roll_influence = 0.5
+wheel_radius = 0.3885
+wheel_rest_length = 0.09975
+suspension_travel = 0.37485
+wheel_friction_slip = 5.0
+suspension_stiffness = 22.0
+suspension_max_force = 16000.0
+damping_compression = 0.6
+damping_relaxation = 0.9
+
+[node name="Wheel" parent="wheel_fr" instance=ExtResource("3_wheel")]
+transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0.08138928, 0, 0)
+
+[node name="wheel_rl" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.04729205, 0.3011547, 1.3273155)
+wheel_roll_influence = 0.5
+wheel_radius = 0.3885
+wheel_rest_length = 0.09975
+suspension_travel = 0.37485
+wheel_friction_slip = 5.0
+suspension_stiffness = 22.0
+suspension_max_force = 16000.0
+damping_compression = 0.6
+damping_relaxation = 0.9
+
+[node name="Wheel" parent="wheel_rl" instance=ExtResource("3_wheel")]
+transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, -0.1497888, 0, 0)
+
+[node name="wheel_rr" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.078014, 0.3011547, 1.3273155)
+wheel_roll_influence = 0.5
+wheel_radius = 0.3885
+wheel_rest_length = 0.09975
+suspension_travel = 0.37485
+wheel_friction_slip = 5.0
+suspension_stiffness = 22.0
+suspension_max_force = 16000.0
+damping_compression = 0.6
+damping_relaxation = 0.9
+
+[node name="Wheel" parent="wheel_rr" instance=ExtResource("3_wheel")]
+transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0.08138928, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7239036, -0.0655326)
+shape = SubResource("BoxShape3D_body")
+
+[node name="CollisionShape3D_nose" type="CollisionShape3D" parent="."]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0, 0.62018145, -2.184441)
+shape = SubResource("CapsuleShape3D_nose")
+
+[node name="CollisionShape3D_cabin" type="CollisionShape3D" parent="."]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -0.0008170764, 0.63392385, -1.1658675)
+shape = SubResource("BoxShape3D_cabin")
+
+[node name="CollisionShape3D_trunk" type="CollisionShape3D" parent="."]
+transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -0.0008170764, 0.68624535, 2.0977005)
+shape = SubResource("CapsuleShape3D_trunk")
+
+[node name="doge-body" parent="." instance=ExtResource("4_body")]
+transform = Transform3D(-1.05, 0, -9.179394e-08, 0, 1.05, 0, 9.179394e-08, 0, -1.05, 0, 0, 0)
+
+[node name="DriverCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3675, 1.1025, -0.345)
+current = false
+fov = 80.0
+
+[node name="ExitPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.1, -0.315, -0.945)
+
+[node name="DriverSeat" type="Area3D" parent="." groups=["interactable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.945, 0.7875, -0.945)
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("2_seat")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DriverSeat"]
+shape = SubResource("BoxShape3D_seat")
+
+[node name="EngineAudio" type="AudioStreamPlayer3D" parent="."]
+unit_size = 8.0
+max_distance = 60.0
+bus = &"Outside"
+
+[node name="Hud" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="ParkingBrakeLabel" type="RichTextLabel" parent="Hud"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -280.0
+offset_top = -50.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_font_sizes/normal_font_size = 22
+bbcode_enabled = true
+text = "P - Parking Brake: [color=green]Y[/color]"
+fit_content = true
+scroll_active = false
+visible = false

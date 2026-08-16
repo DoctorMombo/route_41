@@ -1,11 +1,15 @@
 shader_type sky;
 
+#include "res://shaders/clouds.gdshaderinc"
+
 // ============================================================================
 // ROUTE 41 -- sky
-// Atmosphere gradient, twilight glow, sun disk, phase-lit moon and a rotating
-// starfield, all in a single sky pass. No geometry, no draw calls.
-// Every uniform here is driven by day_night_cycle.gd; the defaults exist only
-// so the shader looks sane before the script runs.
+// Atmosphere gradient, twilight glow, sun disk, phase-lit moon, a rotating
+// starfield and two procedural cloud decks, all in a single sky pass. No
+// geometry, no draw calls.
+// Most uniforms here are driven by day_night_cycle.gd; cloud coverage and
+// drift come from weather_system.gd. Defaults exist only so the shader looks
+// sane before either script runs.
 // ============================================================================
 
 group_uniforms Atmosphere;
@@ -45,43 +49,63 @@ uniform float moon_earthshine : hint_range(0.0, 0.3) = 0.025;
 uniform float moon_washout : hint_range(0.0, 1.0) = 0.0;
 
 group_uniforms Clouds;
-// Anisotropic: the cloud layer is viewed at a grazing angle across most of the
-// sky, so the texture footprint per pixel is long and thin. Isotropic filtering
-// has to blur to the longest axis and loses the shape entirely.
-uniform sampler2D cloud_texture : hint_default_black, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform float cloud_coverage : hint_range(0.0, 1.0) = 0.15;
-// Wind-driven scroll, in uv units. Pushed by WeatherSystem.
-uniform vec2 cloud_offset = vec2(0.0);
-uniform float cloud_altitude : hint_range(200.0, 12000.0) = 2600.0;
-// Radius of the shell the cloud layer sits on. Deliberately far smaller than a
-// real planet: it is what bounds how far toward the horizon the layer reaches,
-// and so how many times the tile repeats. Smaller curves harder.
-uniform float cloud_curvature_radius : hint_range(5000.0, 400000.0) = 45000.0;
-// World metres to uv. One uv unit is 1.0 / cloud_scale metres of sky.
-uniform float cloud_scale : hint_range(0.00005, 0.01) = 0.00042;
-// Scale of the region mask relative to the puffs. Well below 1.0, so cloud
-// regions are much larger than the puffs that fill them.
-uniform float cloud_region_scale : hint_range(0.02, 1.0) = 0.22;
+// In-game days elapsed, pushed every frame by WeatherSystem. Feeds the fbm
+// swirl and the region field's own drift, so the field genuinely evolves
+// instead of only translating with the wind-driven offset below.
+uniform float cloud_time = 0.0;
+// How hard the puff shape is domain-warped. Always on now -- clouds roil a
+// little even on a calm day, not only during weather events.
+uniform float cloud_turbulence : hint_range(0.0, 2.0) = 0.35;
 // Softness of a region's outer edge.
-uniform float cloud_region_edge : hint_range(0.02, 0.6) = 0.20;
-// Where a puff starts within the tile. Higher carves the fluff into separate
-// puffs; lower leaves them merged into a sheet.
-uniform float cloud_shape_floor : hint_range(0.0, 0.9) = 0.42;
+uniform float cloud_region_edge : hint_range(0.02, 0.6) = 0.22;
+uniform float cloud_absorption : hint_range(0.1, 10.0) = 3.2;
+uniform float cloud_light_step : hint_range(0.0, 0.3) = 0.05;
+uniform float cloud_opacity : hint_range(0.0, 1.0) = 0.92;
+uniform vec3 cloud_shade_color : source_color = vec3(0.40, 0.46, 0.60);
 uniform vec3 cloud_sun_color : source_color = vec3(1.0, 0.96, 0.90);
 // Kept alive past sunset by DayNightCycle, so cloud bases still catch the last
 // light after the sun itself has gone.
 uniform float cloud_sun_energy : hint_range(0.0, 4.0) = 1.0;
-uniform vec3 cloud_shade_color : source_color = vec3(0.40, 0.46, 0.60);
-uniform float cloud_absorption : hint_range(0.1, 10.0) = 3.2;
-uniform float cloud_light_step : hint_range(0.0, 0.3) = 0.05;
-uniform float cloud_opacity : hint_range(0.0, 1.0) = 0.95;
-// 0 = fair-weather white, 1 = near-black storm deck. Driven by storm level.
-// Pushed by WeatherSystem from storm_level. Darkness drives the deck toward
-// black storm cloud; turbulence drives how hard the density field is warped,
-// so a storm deck roils where a fair-weather sky merely drifts.
-uniform float cloud_darkness : hint_range(0.0, 1.0) = 0.0;
-uniform float cloud_turbulence : hint_range(0.0, 1.0) = 0.0;
-uniform vec3 cloud_storm_color : source_color = vec3(0.13, 0.12, 0.14);
+uniform vec3 cloud_moon_color : source_color = vec3(0.55, 0.62, 0.85);
+// Dim: clouds reflecting moonlight should read as a faint blue-grey glow at
+// the edges, not a second sun.
+uniform float cloud_moon_energy : hint_range(0.0, 1.0) = 0.0;
+
+group_uniforms CloudsHigh;
+// Thin, high, wind-scoured deck. In the desert this rarely covers more than a
+// tenth of the sky.
+uniform float cloud_hi_coverage : hint_range(0.0, 1.0) = 0.0;
+// Wind-driven scroll, in uv units. Pushed by WeatherSystem.
+uniform vec2 cloud_hi_offset = vec2(0.0);
+uniform float cloud_hi_altitude : hint_range(200.0, 12000.0) = 2600.0;
+// Radius of the shell the layer sits on. Deliberately far smaller than a real
+// planet: it is what bounds how far toward the horizon the layer reaches, and
+// so how many times the tile repeats. Smaller curves harder.
+uniform float cloud_hi_curvature_radius : hint_range(5000.0, 400000.0) = 45000.0;
+// World metres to uv. One uv unit is 1.0 / cloud_hi_scale metres of sky.
+uniform float cloud_hi_scale : hint_range(0.00005, 0.01) = 0.00016;
+// Scale of the region mask relative to the puffs. Well below 1.0, so cloud
+// regions are much larger than the puffs that fill them.
+uniform float cloud_hi_region_scale : hint_range(0.02, 1.0) = 0.20;
+// Higher than the low deck's -- thin and sparse rather than a solid sheet.
+uniform float cloud_hi_shape_floor : hint_range(0.0, 0.9) = 0.52;
+// Stretched hard along one axis: this is what turns a round puff into a
+// wispy cirrus streak.
+uniform vec2 cloud_hi_stretch = vec2(3.2, 1.0);
+
+group_uniforms CloudsLow;
+// Lower, puffier deck. Sitting closer and moving faster than the high layer
+// is what reads as parallax and gives the sky a sense of depth.
+uniform float cloud_lo_coverage : hint_range(0.0, 1.0) = 0.0;
+uniform vec2 cloud_lo_offset = vec2(0.0);
+uniform float cloud_lo_altitude : hint_range(100.0, 6000.0) = 900.0;
+uniform float cloud_lo_curvature_radius : hint_range(5000.0, 400000.0) = 30000.0;
+uniform float cloud_lo_scale : hint_range(0.00005, 0.02) = 0.00034;
+uniform float cloud_lo_region_scale : hint_range(0.02, 1.0) = 0.30;
+// Lower than the high deck's -- fills in to solid, rounded lumps.
+uniform float cloud_lo_shape_floor : hint_range(0.0, 0.9) = 0.24;
+// Round: no stretch. This is the fat, puffy cumulus-style deck.
+uniform vec2 cloud_lo_stretch = vec2(1.0, 1.0);
 
 group_uniforms Stars;
 uniform sampler2D star_field : source_color, filter_linear;
@@ -101,33 +125,54 @@ vec2 equirect_uv(vec3 d) {
 	            0.5 - asin(clamp(d.y, -1.0, 1.0)) / PI_);
 }
 
-// Cloud density at a point on the layer. Two octaves of the same tile: a base
-// shape plus a smaller, offset copy that erodes it into separate puffs.
-float cloud_density(vec2 uv) {
-	// Two roles, deliberately separated.
-	//
-	// The region mask decides WHERE cloud exists, at a much larger scale than
-	// the puffs. Thresholding the puff texture directly is the obvious approach
-	// and it is wrong: at low coverage it keeps only the bright tips of every
-	// puff in the tile, which reads as scattered streaks rather than as a few
-	// clouds. Coverage has to select regions, not pixels.
-	// Domain warp, scaled by storm level. Displacing the lookup by more noise
-	// is what turns smooth drifting blobs into churning, folded structure --
-	// the same trick the dust wall uses for its lobes.
-	vec2 warp = vec2(texture(cloud_texture, uv * 0.31 + cloud_offset * 0.6).r,
-	                 texture(cloud_texture, uv * 0.31 + vec2(4.7, 2.3)).r) - 0.5;
-	uv += warp * cloud_turbulence * 0.9;
+// One cloud deck: intersects the view ray with the shell it sits on, samples
+// its density, and lights it from both the sun and the moon. Returns
+// (colour, alpha) so the caller composites decks back-to-front.
+vec4 cloud_layer(vec3 d, vec3 sun_dir, vec3 moon_dir, float day,
+		float altitude, float curvature_radius, float scale, vec2 offset,
+		float coverage, float region_scale, float shape_floor, vec2 stretch) {
+	// The layer sits on a shell, not a flat plane. A plane divides by d.y, so
+	// its uv derivative runs to infinity at the horizon -- the field gets
+	// sampled far below Nyquist and moires into radial streaks. Intersecting a
+	// sphere instead bounds the distance.
+	float ry = max(d.y, 0.0);
+	float b = curvature_radius * ry;
+	float ray = -b + sqrt(b * b + 2.0 * curvature_radius * altitude + altitude * altitude);
+	vec2 uv = d.xz * ray * scale + offset;
 
-	float mask = texture(cloud_texture, uv * cloud_region_scale + vec2(3.1, 7.4)).r;
-	float cov = clamp(cloud_coverage, 0.0, 1.0);
-	float region = smoothstep(1.0 - cov, 1.0 - cov + cloud_region_edge, mask);
+	// Same singularity, felt one derivative earlier: right at the horizon the
+	// warp would be displacing samples across a wildly undersampled region,
+	// which is what turns fine turbulence into visible aliasing there.
+	float horizon_fade = smoothstep(-0.05, 0.25, d.y);
 
-	// The puff shape, rescaled to reach full opacity. The old version faded
-	// between a threshold and a point above 1.0, so density was capped at a few
-	// percent no matter how bright the texel.
-	float shape = smoothstep(cloud_shape_floor, 1.0, texture(cloud_texture, uv).r);
+	float cd = cloud_density(uv, cloud_time, coverage, region_scale,
+		cloud_region_edge, shape_floor, cloud_turbulence, stretch, horizon_fade);
+	if (cd <= 0.001) {
+		return vec4(0.0);
+	}
 
-	return clamp(shape * region, 0.0, 1.0);
+	// Beer's law along the sun and moon directions, sampled within the layer.
+	// With a body overhead its .xz collapses toward zero and the lighting
+	// flattens, which is what actually happens when the light source is
+	// directly above the cloud.
+	float cd_sun = cloud_density(uv + sun_dir.xz * cloud_light_step, cloud_time,
+		coverage, region_scale, cloud_region_edge, shape_floor, cloud_turbulence,
+		stretch, horizon_fade);
+	float transmit_sun = exp(-cd_sun * cloud_absorption);
+
+	float cd_moon = cloud_density(uv + moon_dir.xz * cloud_light_step, cloud_time,
+		coverage, region_scale, cloud_region_edge, shape_floor, cloud_turbulence,
+		stretch, horizon_fade);
+	float transmit_moon = exp(-cd_moon * cloud_absorption);
+
+	vec3 col = cloud_shade_color * mix(0.10, 1.0, day)
+	         + cloud_sun_color * cloud_sun_energy * transmit_sun
+	         + cloud_moon_color * cloud_moon_energy * transmit_moon;
+
+	// Fade out at the horizon: the shell projection goes singular there and
+	// would otherwise smear into a grey band.
+	float a = cd * cloud_opacity * smoothstep(-0.01, 0.09, d.y);
+	return vec4(col, clamp(a, 0.0, 1.0));
 }
 
 
@@ -247,41 +292,18 @@ void sky() {
 	// and the inner corona during an eclipse.
 	col = mix(col, moon_col, moon_alpha);
 
-	// ---- high cloud layer ---------------------------------------------------
-	// The layer sits on a shell, not a flat plane. A plane divides by d.y, so
-	// its uv derivative runs to infinity at the horizon -- the texture gets
-	// sampled far below Nyquist and moires into radial streaks. Intersecting a
-	// sphere instead bounds the distance: with this radius the whole sky spans
-	// about 2.5 tiles rather than eight and rising.
-	float ry = max(d.y, 0.0);
-	float b = cloud_curvature_radius * ry;
-	float ray = -b + sqrt(b * b + 2.0 * cloud_curvature_radius * cloud_altitude
-		+ cloud_altitude * cloud_altitude);
-	// Horizontal offset of the hit point. Zero at the zenith, bounded at the
-	// horizon, and no division anywhere.
-	vec2 cuv = d.xz * ray * cloud_scale + cloud_offset;
-	float cd = cloud_density(cuv);
-
-	// Beer's law along the sun direction, sampled within the layer. With the
-	// sun overhead sun_dir.xz collapses toward zero and the lighting flattens,
-	// which is what actually happens at noon.
-	float cd_sun = cloud_density(cuv + sun_dir.xz * cloud_light_step);
-	float transmit = exp(-cd_sun * cloud_absorption);
-
-	vec3 cloud_col = cloud_shade_color * mix(0.10, 1.0, day)
-	               + cloud_sun_color * cloud_sun_energy * transmit;
-	// A storm deck absorbs far more than fair-weather cloud: the base goes
-	// slate and only the sunlit tops stay bright.
-	cloud_col *= mix(1.0, mix(0.10, 0.75, transmit), cloud_darkness);
-	// Storm cloud is thick enough that almost nothing gets through. Darkening
-	// after the lighting rather than before keeps the lit rim on the edges,
-	// which is what stops a black deck reading as a flat hole in the sky.
-	cloud_col = mix(cloud_col, cloud_storm_color, cloud_darkness * (1.0 - transmit * 0.4));
-
-	// Fade out at the horizon: the plane projection goes singular there and
-	// would otherwise smear into a grey band.
-	float cloud_a = cd * cloud_opacity * smoothstep(-0.01, 0.09, d.y);
-	col = mix(col, cloud_col, clamp(cloud_a, 0.0, 1.0));
+	// ---- cloud decks, back to front ------------------------------------------
+	// The high deck is farther away, so it is drawn first; the low deck sits
+	// in front of it and is composited on top, which is what gives the sky its
+	// sense of depth when the two drift at different rates.
+	vec4 hi = cloud_layer(d, sun_dir, moon_dir, day,
+		cloud_hi_altitude, cloud_hi_curvature_radius, cloud_hi_scale, cloud_hi_offset,
+		cloud_hi_coverage, cloud_hi_region_scale, cloud_hi_shape_floor, cloud_hi_stretch);
+	vec4 lo = cloud_layer(d, sun_dir, moon_dir, day,
+		cloud_lo_altitude, cloud_lo_curvature_radius, cloud_lo_scale, cloud_lo_offset,
+		cloud_lo_coverage, cloud_lo_region_scale, cloud_lo_shape_floor, cloud_lo_stretch);
+	col = mix(col, hi.rgb, hi.a);
+	col = mix(col, lo.rgb, lo.a);
 
 	// NaN never escapes into the radiance map. x != x is only true for NaN.
 	col.r = (col.r == col.r) ? col.r : 0.0;

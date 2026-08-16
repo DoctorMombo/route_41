@@ -1,5 +1,7 @@
 shader_type spatial;
 
+#include "res://shaders/clouds.gdshaderinc"
+
 // ============================================================================
 // ROUTE 41 -- terrain and road surface
 //
@@ -8,6 +10,7 @@ shader_type spatial;
 //   1. fine grain, so close-up ground isn't flat plastic
 //   2. a cliff normal map on steep faces, for the eroded butte strata
 //   3. asphalt, gravel verge and painted markings inside the road corridor
+//   4. a moving cloud shadow, sampled from the same field the sky draws
 //
 // UV2 carries road-local coordinates, written per vertex by ChunkManager:
 //   UV2.x = signed metres from the centreline (positive = north of the road)
@@ -75,6 +78,20 @@ uniform float albedo_saturation : hint_range(0.0, 2.0) = 1.35;
 uniform float terrain_roughness : hint_range(0.0, 1.0) = 0.95;
 uniform float road_roughness : hint_range(0.0, 1.0) = 0.72;
 uniform float terrain_specular : hint_range(0.0, 1.0) = 0.04;
+
+group_uniforms CloudShadow;
+// Same field the sky's high deck draws from, sampled at world XZ instead of
+// view direction, so the shadow drifts with the wind at the same rate the
+// visible clouds do. Pushed every frame by WeatherSystem.
+uniform float cloud_shadow_time = 0.0;
+uniform vec2 cloud_shadow_offset = vec2(0.0);
+uniform float cloud_shadow_scale : hint_range(0.00005, 0.01) = 0.00016;
+uniform float cloud_shadow_coverage : hint_range(0.0, 1.0) = 0.0;
+uniform float cloud_shadow_region_scale : hint_range(0.02, 1.0) = 0.20;
+uniform float cloud_shadow_shape_floor : hint_range(0.0, 0.9) = 0.30;
+uniform float cloud_shadow_turbulence : hint_range(0.0, 2.0) = 0.35;
+// How much a cloud passing overhead darkens the ground beneath it.
+uniform float cloud_shadow_strength : hint_range(0.0, 1.0) = 0.35;
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -200,6 +217,15 @@ void fragment() {
 		final_normal = normalize(mix(final_normal, road_n, road_influence));
 		rough = mix(rough, mix(0.95, road_roughness, paved), road_influence);
 	}
+
+	// ---- cloud shadow -------------------------------------------------------
+	// World-space, not view-angle, so there is no horizon to fade near and no
+	// stretch -- this approximates the high deck's overall cover, not its
+	// individual streak shapes.
+	float shadow_d = cloud_density(world_pos.xz * cloud_shadow_scale + cloud_shadow_offset,
+		cloud_shadow_time, cloud_shadow_coverage, cloud_shadow_region_scale,
+		0.22, cloud_shadow_shape_floor, cloud_shadow_turbulence, vec2(1.0), 1.0);
+	albedo *= 1.0 - shadow_d * cloud_shadow_strength;
 
 	ALBEDO = albedo;
 	// NORMAL is view space in Godot's fragment stage.

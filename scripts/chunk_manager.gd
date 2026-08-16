@@ -75,6 +75,13 @@ func chunk_coord_for(pos: Vector3) -> Vector2i:
 	return Vector2i(floori(pos.x / chunk_size), floori(pos.z / chunk_size))
 
 
+## The terrain ShaderMaterial shared by every chunk. Lets other systems push
+## their own uniforms (WeatherSystem's cloud shadow) without each chunk
+## needing its own route there.
+func get_terrain_material() -> ShaderMaterial:
+	return _terrain_material
+
+
 ## Force a chunk to exist right now (used so the player has ground to spawn on).
 func ensure_chunk_at(pos: Vector3) -> void:
 	var coord := chunk_coord_for(pos)

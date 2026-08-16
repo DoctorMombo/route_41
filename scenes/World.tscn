@@ -5,6 +5,7 @@
 [ext_resource type="Shader" uid="uid://balxjosbowox8" path="res://shaders/sky.gdshader" id="2_hlk0d"]
 [ext_resource type="Script" uid="uid://dy6acldy0hkqu" path="res://scripts/chunk_manager.gd" id="3_hlk0d"]
 [ext_resource type="PackedScene" uid="uid://80f72lidfotf" path="res://scenes/Player.tscn" id="4_0uv0p"]
+[ext_resource type="PackedScene" path="res://scenes/Car.tscn" id="4_car"]
 [ext_resource type="Script" uid="uid://o8p7csx6kdrk" path="res://scenes/hud.gd" id="5_1lgw5"]
 [ext_resource type="Script" uid="uid://bsk0rm5nte4bs" path="res://scripts/weather_system.gd" id="9_pdh0q"]
 [ext_resource type="Resource" uid="uid://cuoth34wbjs6j" path="res://assets/biome_desert.tres" id="10_h1bdy"]
@@ -12,6 +13,10 @@
 [ext_resource type="AudioStream" uid="uid://dve8ka13h4mlq" path="res://assets/wind_light.ogg" id="12_i4b1j"]
 [ext_resource type="AudioStream" uid="uid://bo67tlasccwf2" path="res://assets/wind_heavy.ogg" id="13_c0d7e"]
 [ext_resource type="AudioStream" uid="uid://hqmuw6f5nfvj" path="res://assets/rumble.ogg" id="16_rpuxp"]
+[ext_resource type="Script" uid="uid://jgo1pd8mlfle" path="res://scenes/debug_console.gd" id="19_dbgcn"]
+[ext_resource type="Script" uid="uid://i3e13ne76wao" path="res://scenes/interact_prompt.gd" id="20_prompt"]
+[ext_resource type="Texture2D" uid="uid://euqk03v5m1so" path="res://assets/starfield_panorama.png" id="21_starfield"]
+[ext_resource type="Texture2D" uid="uid://d1bk8yqhv63fs" path="res://assets/moon_texture.jpg" id="22_moontex"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0uv0p"]
 shader = ExtResource("2_hlk0d")
@@ -32,6 +37,7 @@ shader_parameter/sun_disk_color = Color(1, 0.96, 0.88, 1)
 shader_parameter/sun_angular_radius = 0.0075
 shader_parameter/sun_disk_energy = 14.0
 shader_parameter/sun_corona = 0.55
+shader_parameter/moon_albedo = ExtResource("22_moontex")
 shader_parameter/moon_direction = Vector3(0, -1, 0)
 shader_parameter/moon_right = Vector3(1, 0, 0)
 shader_parameter/moon_up = Vector3(0, 1, 0)
@@ -39,23 +45,34 @@ shader_parameter/moon_angular_radius = 0.0082
 shader_parameter/moon_energy = 1.7
 shader_parameter/moon_earthshine = 0.025
 shader_parameter/moon_washout = 0.0
-shader_parameter/cloud_coverage = 0.15
-shader_parameter/cloud_offset = Vector2(0, 0)
-shader_parameter/cloud_altitude = 2600.0
-shader_parameter/cloud_curvature_radius = 45000.0
-shader_parameter/cloud_scale = 0.00042
-shader_parameter/cloud_region_scale = 0.22
+shader_parameter/cloud_time = 0.0
+shader_parameter/cloud_turbulence = 0.0
 shader_parameter/cloud_region_edge = 0.2
-shader_parameter/cloud_shape_floor = 0.42
-shader_parameter/cloud_sun_color = Color(1, 0.96, 0.9, 1)
-shader_parameter/cloud_sun_energy = 1.0
-shader_parameter/cloud_shade_color = Color(0.4, 0.46, 0.6, 1)
 shader_parameter/cloud_absorption = 3.2
 shader_parameter/cloud_light_step = 0.05
 shader_parameter/cloud_opacity = 0.95
-shader_parameter/cloud_darkness = 0.0
-shader_parameter/cloud_turbulence = 0.0
-shader_parameter/cloud_storm_color = Color(0.13, 0.12, 0.14, 1)
+shader_parameter/cloud_shade_color = Color(0.4, 0.46, 0.6, 1)
+shader_parameter/cloud_sun_color = Color(1, 0.96, 0.9, 1)
+shader_parameter/cloud_sun_energy = 1.0
+shader_parameter/cloud_moon_color = Color(0.55, 0.62, 0.85, 1)
+shader_parameter/cloud_moon_energy = 0.0
+shader_parameter/cloud_hi_coverage = 0.0
+shader_parameter/cloud_hi_offset = Vector2(0, 0)
+shader_parameter/cloud_hi_altitude = 2600.0
+shader_parameter/cloud_hi_curvature_radius = 45000.0
+shader_parameter/cloud_hi_scale = 0.00016
+shader_parameter/cloud_hi_region_scale = 0.2
+shader_parameter/cloud_hi_shape_floor = 0.52
+shader_parameter/cloud_hi_stretch = Vector2(3.2, 1)
+shader_parameter/cloud_lo_coverage = 0.0
+shader_parameter/cloud_lo_offset = Vector2(0, 0)
+shader_parameter/cloud_lo_altitude = 900.0
+shader_parameter/cloud_lo_curvature_radius = 30000.0
+shader_parameter/cloud_lo_scale = 0.00034
+shader_parameter/cloud_lo_region_scale = 0.3
+shader_parameter/cloud_lo_shape_floor = 0.24
+shader_parameter/cloud_lo_stretch = Vector2(1, 1)
+shader_parameter/star_field = ExtResource("21_starfield")
 shader_parameter/star_pole = Vector3(0, 1, 0)
 shader_parameter/star_angle = 0.0
 shader_parameter/star_energy = 1.0
@@ -117,6 +134,8 @@ streaming_target = NodePath("../Player")
 [node name="BodyGlow" parent="Player" index="2" unique_id=820450892 node_paths=PackedStringArray("day_night")]
 day_night = NodePath("../../DayNightCycle")
 
+[node name="Car" parent="." unique_id=1941830880 instance=ExtResource("4_car")]
+
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=859484742]
 
 [node name="Label" type="Label" parent="CanvasLayer" unique_id=1211784257 node_paths=PackedStringArray("player", "day_night", "weather")]
@@ -128,6 +147,24 @@ player = NodePath("../../Player")
 day_night = NodePath("../../DayNightCycle")
 weather = NodePath("../../WeatherSystem")
 
+[node name="InteractPrompt" type="Label" parent="CanvasLayer" unique_id=593813793 node_paths=PackedStringArray("player")]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -120.0
+offset_top = -70.0
+offset_right = 120.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 24
+text = "Press Enter to drive"
+horizontal_alignment = 1
+script = ExtResource("20_prompt")
+player = NodePath("../../Player")
+
 [node name="WeatherSystem" type="Node" parent="." unique_id=1355434653 groups=["weather"]]
 script = ExtResource("9_pdh0q")
 desert_profile = ExtResource("10_h1bdy")
@@ -137,11 +174,17 @@ script = ExtResource("11_h1bdy")
 
 [node name="Light" type="AudioStreamPlayer" parent="WindAudio" unique_id=360770131]
 stream = ExtResource("12_i4b1j")
+bus = &"Outside"
 
 [node name="Heavy" type="AudioStreamPlayer" parent="WindAudio" unique_id=1000523538]
 stream = ExtResource("13_c0d7e")
+bus = &"Outside"
 
 [node name="Rumble" type="AudioStreamPlayer" parent="WindAudio" unique_id=1260367727]
 stream = ExtResource("16_rpuxp")
+bus = &"Outside"
+
+[node name="DebugConsole" type="CanvasLayer" parent="." unique_id=1432930962]
+script = ExtResource("19_dbgcn")
 
 [editable path="Player"]
