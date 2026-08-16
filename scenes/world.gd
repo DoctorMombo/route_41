@@ -25,6 +25,13 @@ func _ready() -> void:
 	chunks.world_seed = world_seed
 	chunks.gen = WorldGen.new(world_seed)
 
+	# Weather is seeded from here too, not from its own Inspector field.
+	# Children are readied before their parent, so it has already come up on
+	# whatever seed it had; this is what puts it on the session's.
+	var weather := get_tree().get_first_node_in_group("weather") as WeatherSystem
+	if weather:
+		weather.set_world_seed(world_seed)
+
 	# Build the ground under the spawn point BEFORE placing the player,
 	# otherwise they fall through the world on frame one.
 	# The centreline meanders, so spawn_z is an offset from the road, not from

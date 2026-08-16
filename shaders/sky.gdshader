@@ -107,6 +107,28 @@ uniform float cloud_lo_shape_floor : hint_range(0.0, 0.9) = 0.24;
 // Round: no stretch. This is the fat, puffy cumulus-style deck.
 uniform vec2 cloud_lo_stretch = vec2(1.0, 1.0);
 
+group_uniforms Lightning;
+// A flash inside the cloud deck. LightningDirector picks the direction and
+// pulses the energy; the deck lights up from the inside rather than being
+// washed over from outside, which is what reads as lightning in cloud rather
+// than as the whole screen flickering.
+uniform vec3 flash_direction = vec3(0.0, 1.0, 0.0);
+uniform vec3 flash_color : source_color = vec3(0.78, 0.85, 1.0);
+uniform float flash_energy : hint_range(0.0, 12.0) = 0.0;
+// How tightly the flash is localised around its direction. Low values light
+// the whole deck faintly, which is what a distant flash behind cloud does.
+uniform float flash_focus : hint_range(1.0, 64.0) = 7.0;
+
+group_uniforms Dust;
+// Airborne dust, 0..1. Composited over everything -- sun disk, moon, stars,
+// cloud -- because that is exactly what a dust storm does to a sky.
+uniform float dust_amount : hint_range(0.0, 1.0) = 0.0;
+uniform vec3 dust_color : source_color = vec3(0.60, 0.42, 0.24);
+// How brightly the dust is lit from above. Driven by WeatherSystem from the
+// day/night light level, so the same wall of dust is a glowing tan by day and
+// very nearly black at night.
+uniform float dust_light : hint_range(0.0, 4.0) = 1.0;
+
 group_uniforms Stars;
 uniform sampler2D star_field : source_color, filter_linear;
 uniform vec3 star_pole = vec3(0.0, 1.0, 0.0);
@@ -168,6 +190,14 @@ vec4 cloud_layer(vec3 d, vec3 sun_dir, vec3 moon_dir, float day,
 	vec3 col = cloud_shade_color * mix(0.10, 1.0, day)
 	         + cloud_sun_color * cloud_sun_energy * transmit_sun
 	         + cloud_moon_color * cloud_moon_energy * transmit_moon;
+
+	// Lightning lights the cloud from within: a bright core where the bolt is
+	// and a weaker glow across the rest of the deck, since the whole underside
+	// catches some of it.
+	if (flash_energy > 0.001) {
+		float near_bolt = pow(max(dot(d, normalize(flash_direction)), 0.0), flash_focus);
+		col += flash_color * flash_energy * (0.20 + 0.80 * near_bolt);
+	}
 
 	// Fade out at the horizon: the shell projection goes singular there and
 	// would otherwise smear into a grey band.
@@ -304,6 +334,15 @@ void sky() {
 		cloud_lo_coverage, cloud_lo_region_scale, cloud_lo_shape_floor, cloud_lo_stretch);
 	col = mix(col, hi.rgb, hi.a);
 	col = mix(col, lo.rgb, lo.a);
+
+	// ---- dust ---------------------------------------------------------------
+	// Last, and over everything. Dust is between the viewer and the whole sky,
+	// so it hides the sun disk, the moon, the stars and the cloud alike -- at
+	// full strength there is no sky left, only the colour of the air.
+	if (dust_amount > 0.001) {
+		vec3 dust = dust_color * dust_light + flash_color * flash_energy * 0.5;
+		col = mix(col, dust, clamp(dust_amount, 0.0, 1.0));
+	}
 
 	// NaN never escapes into the radiance map. x != x is only true for NaN.
 	col.r = (col.r == col.r) ? col.r : 0.0;

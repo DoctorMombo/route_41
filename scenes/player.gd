@@ -26,6 +26,14 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
+## Whether the player is currently in a vehicle. WeatherSystem asks, because
+## a driver is out of the wind entirely and mostly out of the sun -- and no
+## raycast can tell it that, since the camera sits inside the car's own
+## collision shape.
+func is_driving() -> bool:
+	return _driving
+
+
 ## Called by a vehicle when the player enters/exits it. Physics, the
 ## first-person camera and look input all hand off to the vehicle while
 ## driving; the player node itself just goes dormant.

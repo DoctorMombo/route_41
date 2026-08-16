@@ -84,15 +84,32 @@ func _register_commands() -> void:
 	_commands["clear"] = _cmd_clear
 	_commands["clouds"] = _cmd_clouds
 	_commands["time"] = _cmd_time
+	_commands["weather"] = _cmd_weather
+	_commands["timescale"] = _cmd_timescale
+	_commands["daylength"] = _cmd_daylength
+	_commands["pause"] = _cmd_pause
 
 
 func _cmd_help(_args: Array) -> void:
 	_log("Commands:")
 	_log("  help                  this list")
 	_log("  clear                 clear the log")
-	_log("  clouds <hi> [lo]      force cloud coverage 0..1, e.g. 'clouds 0.8'")
-	_log("  clouds off            release the override, back to natural weather")
+	_log("")
+	_log("[color=aqua]Weather[/color]")
+	_log("  weather               current conditions")
+	_log("  weather <event>       start one: %s" % ", ".join(WeatherEvent.id_list()))
+	_log("  weather random        roll one the way the timer would")
+	_log("  weather stop          end the running event, reset the timer")
+	_log("  weather timer <h>     set hours until the next event")
+	_log("  clouds <cirrus> [deck]  force cloud coverage 0..1")
+	_log("  clouds off            release the override")
+	_log("")
+	_log("[color=aqua]Time[/color]")
 	_log("  time <0..24>          jump to a time of day, in hours")
+	_log("  time +<h> / -<h>      skip forward or back, weather follows")
+	_log("  timescale [x]         multiplier on the passage of time")
+	_log("  daylength [seconds]   real seconds per in-game day")
+	_log("  pause                 freeze or unfreeze the clock")
 
 
 func _cmd_clear(_args: Array) -> void:
@@ -104,28 +121,170 @@ func _cmd_clouds(args: Array) -> void:
 		_log("[color=orange]No WeatherSystem found.[/color]")
 		return
 	if args.is_empty():
-		_log("Usage: clouds <hi 0..1> [lo 0..1]   or   clouds off")
+		_log("Usage: clouds <cirrus 0..1> [deck 0..1]   or   clouds off")
 		return
 	if String(args[0]).to_lower() == "off":
 		weather.debug_clear_cloud_override()
 		_log("Cloud override released -- back to the natural simulation.")
 		return
-	var hi := clampf(String(args[0]).to_float(), 0.0, 1.0)
-	var lo := clampf(String(args[1]).to_float(), 0.0, 1.0) if args.size() > 1 else hi
-	weather.debug_set_cloud_coverage(hi, lo)
-	_log("Cloud coverage forced: high %.0f%%, low %.0f%%" % [hi * 100.0, lo * 100.0])
+	var cirrus := clampf(String(args[0]).to_float(), 0.0, 1.0)
+	var deck := clampf(String(args[1]).to_float(), 0.0, 1.0) if args.size() > 1 else 0.0
+	weather.debug_set_cloud_coverage(cirrus, deck)
+	_log("Cloud coverage forced: cirrus %.0f%%, deck %.0f%%"
+		% [cirrus * 100.0, deck * 100.0])
 
+
+# --- weather ----------------------------------------------------------------
+
+func _cmd_weather(args: Array) -> void:
+	if weather == null:
+		_log("[color=orange]No WeatherSystem found.[/color]")
+		return
+	if args.is_empty():
+		_report_weather()
+		return
+
+	var token := String(args[0]).to_lower()
+	match token:
+		"random":
+			var busy := weather.get_state().event
+			var e := weather.trigger_random_event()
+			if busy != null:
+				_log("Rolled [color=aqua]%s[/color] — queued behind %s."
+					% [e.display_name, busy.display_name])
+			else:
+				_log("Rolled [color=aqua]%s[/color]." % e.display_name)
+		"stop", "off", "end":
+			var s := weather.get_state()
+			if s.event == null:
+				_log("No weather event running.")
+			else:
+				var ending := s.event.display_name
+				weather.clear_event()
+				_log("Ended %s. Next event in %.1f h." % [ending, s.hours_to_event])
+		"timer":
+			if args.size() < 2:
+				_log("Usage: weather timer <hours>")
+				return
+			var h := maxf(0.0, String(args[1]).to_float())
+			weather.get_state().hours_to_event = h
+			_log("Next weather event in %.1f in-game hours." % h)
+		_:
+			var wanted := WeatherEvent.by_id(StringName(token))
+			if wanted == null:
+				_log("[color=orange]Unknown event: %s[/color]  (try: %s)"
+					% [token, ", ".join(WeatherEvent.id_list())])
+				return
+			var running := weather.get_state().event
+			# Deliberately the same path the timer uses: the event blends in
+			# over its own onset rather than snapping, and the timer resets
+			# when it ends, exactly as if the timer had fired it.
+			weather.trigger_event(StringName(token))
+			if running != null:
+				_log("%s is already running — [color=aqua]%s[/color] is queued "
+					% [running.display_name, wanted.display_name]
+					+ "behind it.")
+			else:
+				_log("Triggered [color=aqua]%s[/color]. It builds in over the "
+					% wanted.display_name + "next in-game hour or two.")
+
+
+func _report_weather() -> void:
+	var s := weather.get_state()
+	_log("[color=aqua]%s[/color] — %s" % [s.profile.biome_name, s.condition_name()])
+	_log("  temperature  %.1f C   (feels %.1f C)"
+		% [s.temperature_c, s.felt_temperature_c])
+	_log("  humidity     %.1f %%" % [s.humidity * 100.0])
+	_log("  wind         %.1f km/h from %s"
+		% [s.wind_speed_kmh, weather.get_wind_compass()])
+	_log("  cloud cover  %.1f %%   (cirrus %.0f%%, deck %.0f%%)"
+		% [s.cloud_cover * 100.0, s.cirrus_cover * 100.0, s.deck_cover * 100.0])
+	_log("  dust haze    %.1f %%" % [s.dust_haze * 100.0])
+	_log("  exposure     sun %.2f, wind %.2f"
+		% [weather.sun_exposure, weather.wind_exposure])
+	if s.event != null:
+		_log("  event        %s, %s (blend %.2f)"
+			% [s.event.display_name, s.phase_name(), s.event_blend])
+	else:
+		_log("  next event   in %.1f in-game hours" % s.hours_to_event)
+
+
+# --- time -------------------------------------------------------------------
 
 func _cmd_time(args: Array) -> void:
 	if day_night == null:
 		_log("[color=orange]No DayNightCycle found.[/color]")
 		return
 	if args.is_empty():
-		_log("Usage: time <0..24>")
+		_log("Now %s on day %d." % [day_night.get_clock_string(), day_night.get_day_index()])
 		return
-	var hours := clampf(String(args[0]).to_float(), 0.0, 24.0)
+
+	var raw := String(args[0])
+	if raw.begins_with("+") or raw.begins_with("-"):
+		var sign_ := -1.0 if raw.begins_with("-") else 1.0
+		var delta_h := sign_ * absf(raw.substr(1).to_float())
+		day_night.days_elapsed += delta_h / 24.0
+		day_night.set_time(day_night.get_day_index(),
+			fposmod(day_night.days_elapsed, 1.0))
+		# Weather integrates; jumping the clock without also running the
+		# simulation forward would leave it standing at the temperature and
+		# the event schedule of the moment before the jump.
+		if weather and delta_h > 0.0:
+			weather.fast_forward(delta_h)
+		_log("Skipped %+.2f h — now %s on day %d."
+			% [delta_h, day_night.get_clock_string(), day_night.get_day_index()])
+		return
+
+	var hours := clampf(raw.to_float(), 0.0, 24.0)
+	var now := day_night.time_of_day * 24.0
+	var forward := hours - now if hours >= now else hours - now + 24.0
 	day_night.set_time(day_night.get_day_index(), hours / 24.0)
-	_log("Time set to %s" % day_night.get_clock_string())
+	if weather:
+		weather.fast_forward(forward)
+	_log("Time set to %s (weather advanced %.1f h)."
+		% [day_night.get_clock_string(), forward])
+
+
+func _cmd_timescale(args: Array) -> void:
+	if day_night == null:
+		_log("[color=orange]No DayNightCycle found.[/color]")
+		return
+	if args.is_empty():
+		_log("Time scale is x%.2f — one in-game hour every %.1f real seconds."
+			% [day_night.time_scale, _real_seconds_per_hour()])
+		return
+	var x := clampf(String(args[0]).to_float(), 0.0, 20000.0)
+	day_night.time_scale = x
+	_log("Time scale x%.2f — one in-game hour every %.2f real seconds."
+		% [x, _real_seconds_per_hour()])
+
+
+func _cmd_daylength(args: Array) -> void:
+	if day_night == null:
+		_log("[color=orange]No DayNightCycle found.[/color]")
+		return
+	if args.is_empty():
+		_log("A full day takes %.0f real seconds at time scale x%.2f."
+			% [day_night.solar_day_seconds / maxf(day_night.time_scale, 0.0001),
+				day_night.time_scale])
+		return
+	var s := maxf(1.0, String(args[0]).to_float())
+	day_night.solar_day_seconds = s
+	_log("Solar day set to %.0f real seconds (at time scale x%.2f)."
+		% [s, day_night.time_scale])
+
+
+func _cmd_pause(_args: Array) -> void:
+	if day_night == null:
+		_log("[color=orange]No DayNightCycle found.[/color]")
+		return
+	day_night.paused = not day_night.paused
+	_log("Clock %s." % ("paused — weather is frozen too" if day_night.paused else "running"))
+
+
+func _real_seconds_per_hour() -> float:
+	var hps := day_night.get_hours_per_second()
+	return INF if hps <= 0.0 else 1.0 / hps
 
 
 # --- plumbing ------------------------------------------------------------

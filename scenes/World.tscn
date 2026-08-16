@@ -17,6 +17,8 @@
 [ext_resource type="Script" uid="uid://i3e13ne76wao" path="res://scenes/interact_prompt.gd" id="20_prompt"]
 [ext_resource type="Texture2D" uid="uid://euqk03v5m1so" path="res://assets/starfield_panorama.png" id="21_starfield"]
 [ext_resource type="Texture2D" uid="uid://d1bk8yqhv63fs" path="res://assets/moon_texture.jpg" id="22_moontex"]
+[ext_resource type="Script" path="res://scripts/lightning_director.gd" id="23_lightning"]
+[ext_resource type="AudioStream" path="res://assets/dust_storm.ogg" id="25_duststorm"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0uv0p"]
 shader = ExtResource("2_hlk0d")
@@ -139,9 +141,11 @@ day_night = NodePath("../../DayNightCycle")
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=859484742]
 
 [node name="Label" type="Label" parent="CanvasLayer" unique_id=1211784257 node_paths=PackedStringArray("player", "day_night", "weather")]
-offset_right = 40.0
-offset_bottom = 23.0
-theme_override_font_sizes/font_size = 20
+offset_left = 12.0
+offset_top = 8.0
+offset_right = 560.0
+offset_bottom = 240.0
+theme_override_font_sizes/font_size = 15
 script = ExtResource("5_1lgw5")
 player = NodePath("../../Player")
 day_night = NodePath("../../DayNightCycle")
@@ -183,6 +187,13 @@ bus = &"Outside"
 [node name="Rumble" type="AudioStreamPlayer" parent="WindAudio" unique_id=1260367727]
 stream = ExtResource("16_rpuxp")
 bus = &"Outside"
+
+[node name="Dust" type="AudioStreamPlayer" parent="WindAudio" unique_id=1260367728]
+stream = ExtResource("25_duststorm")
+bus = &"Outside"
+
+[node name="LightningDirector" type="Node3D" parent="." unique_id=1260367729]
+script = ExtResource("23_lightning")
 
 [node name="DebugConsole" type="CanvasLayer" parent="." unique_id=1432930962]
 script = ExtResource("19_dbgcn")

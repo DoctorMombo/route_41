@@ -15,6 +15,10 @@ signal day_started(day_index: int)
 @export_group("Time")
 ## Real seconds per in-game solar day.
 @export var solar_day_seconds: float = 1200.0
+## Multiplier on the passage of time. 1.0 is the game's real rate; the debug
+## console drives this rather than solar_day_seconds so the configured day
+## length stays visible next to whatever you are testing at.
+@export var time_scale: float = 1.0
 @export_range(0.0, 1.0) var start_time_of_day: float = 0.28
 @export var start_day: int = 0
 @export var paused: bool = false
@@ -127,11 +131,20 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if not paused:
-		days_elapsed += delta / maxf(solar_day_seconds, 0.001)
+		days_elapsed += delta * time_scale / maxf(solar_day_seconds, 0.001)
 	_apply()
 
 
 # --- public helpers ---------------------------------------------------------
+
+## In-game hours per real second, after time_scale and the pause flag. The
+## single source of truth for "how fast is time moving" -- weather integrates
+## against this rather than keeping its own idea of the clock.
+func get_hours_per_second() -> float:
+	if paused:
+		return 0.0
+	return 24.0 * time_scale / maxf(solar_day_seconds, 0.001)
+
 
 func get_clock_string() -> String:
 	var hours := floori(time_of_day * 24.0)
