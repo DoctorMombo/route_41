@@ -98,7 +98,8 @@ func _cmd_help(_args: Array) -> void:
 	_log("")
 	_log("[color=aqua]Weather[/color]")
 	_log("  weather               current conditions")
-	_log("  weather <event>       start one: %s" % ", ".join(WeatherEvent.id_list()))
+	_log("  weather <event>       start one, replacing whatever is running:")
+	_log("                          %s" % ", ".join(WeatherEvent.id_list()))
 	_log("  weather random        roll one the way the timer would")
 	_log("  weather stop          end the running event, reset the timer")
 	_log("  weather timer <h>     set hours until the next event")
@@ -155,10 +156,10 @@ func _cmd_weather(args: Array) -> void:
 	match token:
 		"random":
 			var busy := weather.get_state().event
-			var e := weather.trigger_random_event()
+			var e := weather.trigger_random_event(true)
 			if busy != null:
-				_log("Rolled [color=aqua]%s[/color] — queued behind %s."
-					% [e.display_name, busy.display_name])
+				_log("Ended %s. Rolled [color=aqua]%s[/color] in its place."
+					% [busy.display_name, e.display_name])
 			else:
 				_log("Rolled [color=aqua]%s[/color]." % e.display_name)
 		"stop", "off", "end":
@@ -183,14 +184,15 @@ func _cmd_weather(args: Array) -> void:
 					% [token, ", ".join(WeatherEvent.id_list())])
 				return
 			var running := weather.get_state().event
-			# Deliberately the same path the timer uses: the event blends in
-			# over its own onset rather than snapping, and the timer resets
-			# when it ends, exactly as if the timer had fired it.
-			weather.trigger_event(StringName(token))
+			# Replaces whatever is running rather than queuing behind it: the
+			# point of setting the weather from the console is to see it. Once
+			# started it is the timer's own path -- it builds in over its own
+			# onset, and the timer resets when it ends.
+			weather.trigger_event(StringName(token), true)
 			if running != null:
-				_log("%s is already running — [color=aqua]%s[/color] is queued "
+				_log("Ended %s. [color=aqua]%s[/color] builds in over the "
 					% [running.display_name, wanted.display_name]
-					+ "behind it.")
+					+ "next in-game hour or two.")
 			else:
 				_log("Triggered [color=aqua]%s[/color]. It builds in over the "
 					% wanted.display_name + "next in-game hour or two.")
