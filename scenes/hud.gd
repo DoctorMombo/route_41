@@ -5,6 +5,11 @@ extends Label
 ## Shows the six tracked weather stats for the biome the player is standing in,
 ## the current condition, and how long until the next weather event. This is a
 ## development readout, not the shipping HUD -- it is deliberately dense.
+##
+## Temperature and humidity are the ones the PLAYER is in, not the biome's. Sit
+## in the car and they become the cabin's, with the biome's shown alongside for
+## comparison. Everything else -- wind, cloud, dust, events -- is the sky, which
+## is the same sky whether you are out in it or not.
 
 @export var player: Node3D
 @export var day_night: DayNightCycle
@@ -32,10 +37,13 @@ func _process(_delta: float) -> void:
 		km_west, day, clock, _rate_suffix()])
 	lines.append("%s — %s%s" % [
 		s.profile.biome_name.to_upper(), s.condition_name(), _phase_suffix(s)])
+	lines.append(_exposure_line())
 	lines.append("")
 	lines.append("Temperature   %6.1f °C      feels %6.1f °C%s" % [
-		s.temperature_c, s.felt_temperature_c, _felt_note(s)])
-	lines.append("Humidity      %6.1f %%" % [s.humidity * 100.0])
+		weather.get_ambient_temperature_c(), weather.get_felt_temperature_c(),
+		_temperature_note(s)])
+	lines.append("Humidity      %6.1f %%%s" % [
+		weather.get_ambient_humidity() * 100.0, _humidity_note(s)])
 	lines.append("Wind          %6.1f km/h   from %-3s  (%s)" % [
 		s.wind_speed_kmh, weather.get_wind_compass(), weather.get_wind_label()])
 	lines.append("Cloud cover   %6.1f %%      cirrus %.0f%% / deck %.0f%%" % [
@@ -65,16 +73,53 @@ func _phase_suffix(s: BiomeWeatherState) -> String:
 	return "  (%s)" % p if p != "" else ""
 
 
-## Names what is moving felt temperature away from air temperature, but only
-## once the gap is big enough to matter -- a permanent annotation would just be
-## noise on the line.
-func _felt_note(s: BiomeWeatherState) -> String:
+## Where the player is and what is reaching them there. Reads the smoothed
+## exposure values rather than "am I in a car", so an overhang shows up on the
+## same line as a cabin does and there is one place to look either way.
+func _exposure_line() -> String:
+	var where := weather.get_shelter_name() if weather.is_indoors() else "outdoors"
+	return "Exposure      %s — %s, %s" % [where, _sun_words(), _wind_words()]
+
+
+func _sun_words() -> String:
+	var e := weather.sun_exposure
+	if e < 0.05:
+		return "no direct sunlight"
+	if e < 0.60:
+		return "partial sun"
+	return "direct sunlight"
+
+
+func _wind_words() -> String:
+	var e := weather.wind_exposure
+	if e < 0.05:
+		return "no wind"
+	if e < 0.60:
+		return "sheltered from the wind"
+	return "open to the wind"
+
+
+## Indoors: what the air outside is doing, since that is the comparison the
+## player wants ("is it worth getting out?"). Outdoors: what is pulling felt
+## temperature away from air temperature, once the gap is big enough to matter.
+## A permanent annotation in either case would just be noise on the line.
+func _temperature_note(s: BiomeWeatherState) -> String:
+	if weather.is_indoors():
+		return "   (%s; outside %.1f °C)" % [weather.get_shelter_name(), s.temperature_c]
 	var delta := s.felt_temperature_c - s.temperature_c
 	if absf(delta) < felt_warning_delta:
 		return ""
 	if delta > 0.0:
 		return "   (+%.0f direct sun)" % delta
 	return "   (%.0f wind chill)" % delta
+
+
+func _humidity_note(s: BiomeWeatherState) -> String:
+	if not weather.is_indoors():
+		return ""
+	# Padded to land under the note on the temperature line above it.
+	return "                      (%s; outside %.1f %%)" % [
+		weather.get_shelter_name(), s.humidity * 100.0]
 
 
 func _event_line(s: BiomeWeatherState) -> String:

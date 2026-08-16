@@ -23,69 +23,69 @@ size = Vector3(0.945, 1.365, 1.155)
 [node name="Car" type="VehicleBody3D"]
 mass = 2200.0
 center_of_mass_mode = 1
-center_of_mass = Vector3(0, -0.105, 0)
+center_of_mass = Vector3(0, 0.12, 0)
 script = ExtResource("1_car")
 
 [node name="wheel_fl" type="VehicleWheel3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.04729205, 0.3573549, -1.575063)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.04729205, 0.571, -1.575063)
 use_as_traction = true
 use_as_steering = true
-wheel_roll_influence = 0.5
+wheel_roll_influence = 0.1
 wheel_radius = 0.3885
-wheel_rest_length = 0.09975
-suspension_travel = 0.37485
-wheel_friction_slip = 5.0
-suspension_stiffness = 22.0
-suspension_max_force = 16000.0
-damping_compression = 0.6
-damping_relaxation = 0.9
+wheel_rest_length = 0.3
+suspension_travel = 0.3
+wheel_friction_slip = 4.5
+suspension_stiffness = 28.0
+suspension_max_force = 22000.0
+damping_compression = 4.4
+damping_relaxation = 5.4
 
 [node name="Wheel" parent="wheel_fl" instance=ExtResource("3_wheel")]
 transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, -0.1497888, 0, 0)
 
 [node name="wheel_fr" type="VehicleWheel3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.078014, 0.3573549, -1.575063)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.078014, 0.571, -1.575063)
 use_as_traction = true
 use_as_steering = true
-wheel_roll_influence = 0.5
+wheel_roll_influence = 0.1
 wheel_radius = 0.3885
-wheel_rest_length = 0.09975
-suspension_travel = 0.37485
-wheel_friction_slip = 5.0
-suspension_stiffness = 22.0
-suspension_max_force = 16000.0
-damping_compression = 0.6
-damping_relaxation = 0.9
+wheel_rest_length = 0.3
+suspension_travel = 0.3
+wheel_friction_slip = 4.5
+suspension_stiffness = 28.0
+suspension_max_force = 22000.0
+damping_compression = 4.4
+damping_relaxation = 5.4
 
 [node name="Wheel" parent="wheel_fr" instance=ExtResource("3_wheel")]
 transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0.08138928, 0, 0)
 
 [node name="wheel_rl" type="VehicleWheel3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.04729205, 0.3011547, 1.3273155)
-wheel_roll_influence = 0.5
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.04729205, 0.571, 1.3273155)
+wheel_roll_influence = 0.1
 wheel_radius = 0.3885
-wheel_rest_length = 0.09975
-suspension_travel = 0.37485
-wheel_friction_slip = 5.0
-suspension_stiffness = 22.0
-suspension_max_force = 16000.0
-damping_compression = 0.6
-damping_relaxation = 0.9
+wheel_rest_length = 0.3
+suspension_travel = 0.3
+wheel_friction_slip = 4.5
+suspension_stiffness = 28.0
+suspension_max_force = 22000.0
+damping_compression = 4.4
+damping_relaxation = 5.4
 
 [node name="Wheel" parent="wheel_rl" instance=ExtResource("3_wheel")]
 transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, -0.1497888, 0, 0)
 
 [node name="wheel_rr" type="VehicleWheel3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.078014, 0.3011547, 1.3273155)
-wheel_roll_influence = 0.5
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.078014, 0.571, 1.3273155)
+wheel_roll_influence = 0.1
 wheel_radius = 0.3885
-wheel_rest_length = 0.09975
-suspension_travel = 0.37485
-wheel_friction_slip = 5.0
-suspension_stiffness = 22.0
-suspension_max_force = 16000.0
-damping_compression = 0.6
-damping_relaxation = 0.9
+wheel_rest_length = 0.3
+suspension_travel = 0.3
+wheel_friction_slip = 4.5
+suspension_stiffness = 28.0
+suspension_max_force = 22000.0
+damping_compression = 4.4
+damping_relaxation = 5.4
 
 [node name="Wheel" parent="wheel_rr" instance=ExtResource("3_wheel")]
 transform = Transform3D(1.05, 0, 0, 0, 1.05, 0, 0, 0, 1.05, 0.08138928, 0, 0)
@@ -115,7 +115,7 @@ current = false
 fov = 80.0
 
 [node name="ExitPoint" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.1, -0.315, -0.945)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.1, 0.15, -0.945)
 
 [node name="DriverSeat" type="Area3D" parent="." groups=["interactable"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.945, 0.7875, -0.945)

@@ -136,7 +136,7 @@ streaming_target = NodePath("../Player")
 [node name="BodyGlow" parent="Player" index="2" unique_id=820450892 node_paths=PackedStringArray("day_night")]
 day_night = NodePath("../../DayNightCycle")
 
-[node name="Car" parent="." unique_id=1941830880 instance=ExtResource("4_car")]
+[node name="Car" parent="." unique_id=1941830880 groups=["vehicle"] instance=ExtResource("4_car")]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=859484742]
 

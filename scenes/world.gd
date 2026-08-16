@@ -42,6 +42,11 @@ func _ready() -> void:
 
 	var car_x := spawn_x + CAR_OFFSET_X
 	var car_road_z := chunks.gen.road_center(car_x) + spawn_z + CAR_OFFSET_Z
-	car.global_position = chunks.spawn_position(car_x, car_road_z, 0.6)
+	# Just enough clearance to land on the road rather than in it. The car's
+	# origin sits about 0.03 m above its contact patches, and the tessellated
+	# mesh runs slightly below the true height function between vertices, so
+	# this drops it a couple of centimetres onto its wheels. Any more and it
+	# arrives with a bang; the parking brake then holds it where it lands.
+	car.global_position = chunks.spawn_position(car_x, car_road_z, 0.25)
 	# Road runs along X; face the car west (-X), the direction of travel.
 	car.rotation.y = PI / 2.0

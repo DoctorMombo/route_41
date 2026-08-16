@@ -4,7 +4,7 @@
 cutoff_hz = 20500.0
 
 [sub_resource type="AudioEffectLowPassFilter" id="AudioEffectLowPassFilter_inside"]
-cutoff_hz = 600.0
+cutoff_hz = 1200.0
 
 [resource]
 bus/1/name = &"Outside"
@@ -19,7 +19,7 @@ bus/2/name = &"Inside"
 bus/2/solo = false
 bus/2/mute = false
 bus/2/bypass_fx = false
-bus/2/volume_db = -14.0
+bus/2/volume_db = -8.0
 bus/2/send = &"Master"
 bus/2/effect/0/effect = SubResource("AudioEffectLowPassFilter_inside")
 bus/2/effect/0/enabled = true
