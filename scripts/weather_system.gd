@@ -193,16 +193,20 @@ func get_biome_ids() -> Array:
 ## Start a weather event in the active biome. This is what an in-game item
 ## calls, and what the debug console calls -- both land on exactly the same
 ## path the timer uses, including how the timer behaves afterwards.
-func trigger_event(token: StringName) -> bool:
+##
+## `replace` ends whatever is running first instead of queuing behind it. Items
+## leave it false so the weather cannot be made to jump; the console passes true
+## so that setting the weather visibly sets the weather.
+func trigger_event(token: StringName, replace: bool = false) -> bool:
 	var e := WeatherEvent.by_id(token)
 	if e == null:
 		return false
-	get_state().trigger(e)
+	get_state().trigger(e, replace)
 	return true
 
 
-func trigger_random_event() -> WeatherEvent:
-	return get_state().trigger_random()
+func trigger_random_event(replace: bool = false) -> WeatherEvent:
+	return get_state().trigger_random(replace)
 
 
 ## Debug only: cut the running event short and roll a fresh timer.

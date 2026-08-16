@@ -147,14 +147,31 @@ func step(dt_hours: float, days_elapsed: float, sun_altitude: float,
 ## event can begin -- the timer, an in-game item, and the debug console -- so
 ## that a forced event is indistinguishable from a natural one, including how
 ## the timer behaves afterwards.
-func trigger(e: WeatherEvent) -> void:
+##
+## With one already running the new event waits its turn, rather than cutting
+## the current one off mid-blend and snapping the sky. That is right for the
+## timer and for an item: neither is allowed to make the weather jump.
+##
+## `replace` overrides it, and the debug console passes true. A command that
+## quietly queued itself behind an eight-hour storm would look like it had done
+## nothing at all, which is the opposite of what a debug tool is for. The sky
+## does jump -- the running event is dropped to nothing and the new one builds
+## in from clear over its own onset -- and for a console command that is the
+## point.
+func trigger(e: WeatherEvent, replace: bool = false) -> void:
 	if e == null:
 		return
 	if event != null:
-		# Something is already running. Queue it rather than cutting the
-		# current event off mid-blend, which would snap the sky.
-		_queued = e
-		return
+		if not replace:
+			_queued = e
+			return
+		# The caller asked for THIS event now, so anything already waiting in
+		# line is stale -- drop it rather than have it surface later out of
+		# nowhere. end_event() rolls a fresh timer, which the new event's own
+		# ending will roll again; harmless, and it keeps the two paths
+		# identical to a natural end followed by a natural start.
+		_queued = null
+		end_event()
 
 	event = e
 	_event_elapsed_h = 0.0
@@ -179,9 +196,10 @@ func end_event() -> void:
 	event_ended.emit(finished)
 
 
-## Roll the next event now instead of waiting for the timer. Used by the
-## timer itself, and by 'weather random' in the console.
-func trigger_random() -> WeatherEvent:
+## Roll the next event now instead of waiting for the timer. Used by the timer
+## itself, which only ever calls it with nothing running, and by 'weather
+## random' in the console, which passes replace through.
+func trigger_random(replace: bool = false) -> WeatherEvent:
 	var choices := WeatherEvent.library()
 	var total := 0.0
 	for e in choices:
@@ -190,9 +208,9 @@ func trigger_random() -> WeatherEvent:
 	for e in choices:
 		roll -= e.weight
 		if roll <= 0.0:
-			trigger(e)
+			trigger(e, replace)
 			return e
-	trigger(choices[0])
+	trigger(choices[0], replace)
 	return choices[0]
 
 
