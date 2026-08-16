@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="BiomeWeather" format=3 uid="uid://cuoth34wbjs6j"]
+
+[ext_resource type="Script" uid="uid://d34ndbfgv3hkm" path="res://scripts/biome_weather.gd" id="1_psfcw"]
+
+[resource]
+script = ExtResource("1_psfcw")
+metadata/_custom_type_script = "uid://d34ndbfgv3hkm"

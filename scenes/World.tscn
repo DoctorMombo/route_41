@@ -1,0 +1,147 @@
+[gd_scene format=3 uid="uid://1r3bqvo3e5mm"]
+
+[ext_resource type="Script" uid="uid://dm8cpa70p0ug6" path="res://scenes/world.gd" id="1_d1c63"]
+[ext_resource type="Script" uid="uid://bi5hjj33d0tg1" path="res://scripts/day_night_cycle.gd" id="2_1lgw5"]
+[ext_resource type="Shader" uid="uid://balxjosbowox8" path="res://shaders/sky.gdshader" id="2_hlk0d"]
+[ext_resource type="Script" uid="uid://dy6acldy0hkqu" path="res://scripts/chunk_manager.gd" id="3_hlk0d"]
+[ext_resource type="PackedScene" uid="uid://80f72lidfotf" path="res://scenes/Player.tscn" id="4_0uv0p"]
+[ext_resource type="Script" uid="uid://o8p7csx6kdrk" path="res://scenes/hud.gd" id="5_1lgw5"]
+[ext_resource type="Script" uid="uid://bsk0rm5nte4bs" path="res://scripts/weather_system.gd" id="9_pdh0q"]
+[ext_resource type="Resource" uid="uid://cuoth34wbjs6j" path="res://assets/biome_desert.tres" id="10_h1bdy"]
+[ext_resource type="Script" uid="uid://00bbnblirjv5" path="res://scenes/wind_audio.gd" id="11_h1bdy"]
+[ext_resource type="AudioStream" uid="uid://dve8ka13h4mlq" path="res://assets/wind_light.ogg" id="12_i4b1j"]
+[ext_resource type="AudioStream" uid="uid://bo67tlasccwf2" path="res://assets/wind_heavy.ogg" id="13_c0d7e"]
+[ext_resource type="AudioStream" uid="uid://hqmuw6f5nfvj" path="res://assets/rumble.ogg" id="16_rpuxp"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0uv0p"]
+shader = ExtResource("2_hlk0d")
+shader_parameter/day_zenith = Color(0.09, 0.32, 0.75, 1)
+shader_parameter/day_horizon = Color(0.57, 0.74, 0.93, 1)
+shader_parameter/night_zenith = Color(0.004, 0.007, 0.022, 1)
+shader_parameter/night_horizon = Color(0.02, 0.03, 0.065, 1)
+shader_parameter/horizon_falloff = 4.0
+shader_parameter/glow_core = Color(1, 0.74, 0.34, 1)
+shader_parameter/glow_mid = Color(0.98, 0.34, 0.09, 1)
+shader_parameter/glow_far = Color(0.3, 0.11, 0.13, 1)
+shader_parameter/glow_strength = 1.7
+shader_parameter/glow_band_tightness = 7.0
+shader_parameter/glow_azimuth_spread = 3.0
+shader_parameter/glow_ambient_ring = 0.22
+shader_parameter/sun_direction = Vector3(0, 1, 0)
+shader_parameter/sun_disk_color = Color(1, 0.96, 0.88, 1)
+shader_parameter/sun_angular_radius = 0.0075
+shader_parameter/sun_disk_energy = 14.0
+shader_parameter/sun_corona = 0.55
+shader_parameter/moon_direction = Vector3(0, -1, 0)
+shader_parameter/moon_right = Vector3(1, 0, 0)
+shader_parameter/moon_up = Vector3(0, 1, 0)
+shader_parameter/moon_angular_radius = 0.0082
+shader_parameter/moon_energy = 1.7
+shader_parameter/moon_earthshine = 0.025
+shader_parameter/moon_washout = 0.0
+shader_parameter/cloud_coverage = 0.15
+shader_parameter/cloud_offset = Vector2(0, 0)
+shader_parameter/cloud_altitude = 2600.0
+shader_parameter/cloud_curvature_radius = 45000.0
+shader_parameter/cloud_scale = 0.00042
+shader_parameter/cloud_region_scale = 0.22
+shader_parameter/cloud_region_edge = 0.2
+shader_parameter/cloud_shape_floor = 0.42
+shader_parameter/cloud_sun_color = Color(1, 0.96, 0.9, 1)
+shader_parameter/cloud_sun_energy = 1.0
+shader_parameter/cloud_shade_color = Color(0.4, 0.46, 0.6, 1)
+shader_parameter/cloud_absorption = 3.2
+shader_parameter/cloud_light_step = 0.05
+shader_parameter/cloud_opacity = 0.95
+shader_parameter/cloud_darkness = 0.0
+shader_parameter/cloud_turbulence = 0.0
+shader_parameter/cloud_storm_color = Color(0.13, 0.12, 0.14, 1)
+shader_parameter/star_pole = Vector3(0, 1, 0)
+shader_parameter/star_angle = 0.0
+shader_parameter/star_energy = 1.0
+shader_parameter/star_glow_washout = 5.0
+
+[sub_resource type="Sky" id="Sky_hksco"]
+sky_material = SubResource("ShaderMaterial_0uv0p")
+process_mode = 1
+
+[sub_resource type="Environment" id="Environment_bvtnt"]
+background_mode = 2
+sky = SubResource("Sky_hksco")
+ambient_light_source = 3
+tonemap_mode = 2
+tonemap_exposure = 0.65
+tonemap_white = 2.0
+fog_enabled = true
+fog_mode = 1
+fog_density = 1.0
+fog_sky_affect = 0.0
+fog_depth_curve = 1.6
+fog_depth_begin = 280.0
+fog_depth_end = 520.0
+
+[node name="World" type="Node3D" unique_id=624115362]
+script = ExtResource("1_d1c63")
+use_random_seed = null
+fixed_seed = null
+spawn_x = null
+spawn_z = null
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1123577435]
+environment = SubResource("Environment_bvtnt")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=453260790]
+shadow_enabled = true
+directional_shadow_max_distance = 250.0
+
+[node name="Moon" type="DirectionalLight3D" parent="." unique_id=1943357273]
+light_color = Color(0.56078434, 0.65882355, 0.84705883, 1)
+
+[node name="DayNightCycle" type="Node3D" parent="." unique_id=1297981401 node_paths=PackedStringArray("sun", "moon", "world_environment") groups=["day_night"]]
+script = ExtResource("2_1lgw5")
+sun_energy = 1.15
+ambient_day_color = Color(0.5803922, 0.6392157, 0.7411765, 1)
+ambient_day_energy = 0.32
+ambient_night_energy = 0.1
+ambient_moon_boost = 0.2
+sun = NodePath("../Sun")
+moon = NodePath("../Moon")
+world_environment = NodePath("../WorldEnvironment")
+
+[node name="ChunkManager" type="Node3D" parent="." unique_id=484528811 node_paths=PackedStringArray("streaming_target") groups=["chunk_manager"]]
+script = ExtResource("3_hlk0d")
+streaming_target = NodePath("../Player")
+
+[node name="Player" parent="." unique_id=150606931 groups=["player"] instance=ExtResource("4_0uv0p")]
+
+[node name="BodyGlow" parent="Player" index="2" unique_id=820450892 node_paths=PackedStringArray("day_night")]
+day_night = NodePath("../../DayNightCycle")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=859484742]
+
+[node name="Label" type="Label" parent="CanvasLayer" unique_id=1211784257 node_paths=PackedStringArray("player", "day_night", "weather")]
+offset_right = 40.0
+offset_bottom = 23.0
+theme_override_font_sizes/font_size = 20
+script = ExtResource("5_1lgw5")
+player = NodePath("../../Player")
+day_night = NodePath("../../DayNightCycle")
+weather = NodePath("../../WeatherSystem")
+
+[node name="WeatherSystem" type="Node" parent="." unique_id=1355434653 groups=["weather"]]
+script = ExtResource("9_pdh0q")
+desert_profile = ExtResource("10_h1bdy")
+
+[node name="WindAudio" type="Node" parent="." unique_id=981402355]
+script = ExtResource("11_h1bdy")
+
+[node name="Light" type="AudioStreamPlayer" parent="WindAudio" unique_id=360770131]
+stream = ExtResource("12_i4b1j")
+
+[node name="Heavy" type="AudioStreamPlayer" parent="WindAudio" unique_id=1000523538]
+stream = ExtResource("13_c0d7e")
+
+[node name="Rumble" type="AudioStreamPlayer" parent="WindAudio" unique_id=1260367727]
+stream = ExtResource("16_rpuxp")
+
+[editable path="Player"]

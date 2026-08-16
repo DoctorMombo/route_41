@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://80f72lidfotf"]
+
+[ext_resource type="Script" uid="uid://cn4sq6faeudd6" path="res://scenes/player.gd" id="1_p0vlq"]
+[ext_resource type="Script" uid="uid://g3g7gnfgql6e" path="res://scenes/player_glow.gd" id="2_v6fml"]
+[ext_resource type="Script" uid="uid://diesirfu3y6hg" path="res://scenes/footstep_audio.gd" id="3_ftstp"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_bvtnt"]
+radius = 0.4
+height = 1.8
+
+[node name="Player" type="CharacterBody3D" unique_id=150606931]
+floor_max_angle = 0.87266463
+script = ExtResource("1_p0vlq")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=969051248]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_bvtnt")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=952215225]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+far = 2000.0
+
+[node name="BodyGlow" type="OmniLight3D" parent="." unique_id=820450892]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+light_color = Color(0.65882355, 0.8156863, 0.8784314, 1)
+light_energy = 0.7
+light_specular = 0.0
+omni_range = 4.5
+omni_attenuation = 2.2
+script = ExtResource("2_v6fml")
+
+[node name="FootstepAudio" type="AudioStreamPlayer" parent="." unique_id=1576841531]
+script = ExtResource("3_ftstp")
